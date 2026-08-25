@@ -30,7 +30,10 @@ SERIES_URLS = [
 ]
 
 # 재고 없음을 나타내는 키워드 (사이트 표기에 맞게 수정 가능)
-OUT_OF_STOCK_KEYWORDS = ["售完", "已售完", "缺貨", "販売を終了", "SOLD OUT", "sold out"]
+OUT_OF_STOCK_KEYWORDS = [
+    "OUT OF STOCK",
+    "售完", "已售完", "缺貨", "販売を終了", "SOLD OUT", "sold out",
+]
 
 # 상품 링크 패턴 (시리즈 페이지에서 개별 상품 코드 추출용)
 ITEM_LINK_PATTERN = re.compile(r"/tw/item/([A-Za-z0-9]+)")
@@ -102,33 +105,4 @@ def check_series_new_items(page, url: str, state: dict) -> None:
 
     new_codes = set(codes) - prev_codes
     for code in new_codes:
-        item_url = f"https://p-bandai.com/tw/item/{code}"
-        send_discord(f"🆕 **신상품 등록!**\n{item_url}")
-
-
-def main() -> None:
-    state = load_state()
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch()
-        page = browser.new_page(locale="zh-TW")
-
-        for url in ITEM_URLS:
-            try:
-                check_item_stock(page, url, state)
-            except Exception as e:
-                print(f"[ERROR] 상품 체크 실패 ({url}): {e}", file=sys.stderr)
-
-        for url in SERIES_URLS:
-            try:
-                check_series_new_items(page, url, state)
-            except Exception as e:
-                print(f"[ERROR] 시리즈 체크 실패 ({url}): {e}", file=sys.stderr)
-
-        browser.close()
-
-    save_state(state)
-
-
-if __name__ == "__main__":
-    main()
+        item_url =
