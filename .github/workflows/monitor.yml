@@ -1,0 +1,41 @@
+name: P-Bandai Monitor
+
+on:
+  schedule:
+    # 매 20분마다 실행 (UTC 기준, cron은 UTC 시간을 사용합니다)
+    - cron: "*/20 * * * *"
+  workflow_dispatch: {}  # Actions 탭에서 수동 실행 버튼 활성화
+
+# state.json을 다시 커밋하기 위해 쓰기 권한 필요
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 의존성 설치
+        run: |
+          pip install -r requirements.txt
+          playwright install --with-deps chromium
+
+      - name: 모니터링 스크립트 실행
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python monitor.py
+
+      - name: 상태 파일 커밋
+        run: |
+          git config user.name "pbandai-monitor-bot"
+          git config user.email "actions@github.com"
+          git add state.json
+          git diff --quiet --cached || git commit -m "Update state.json"
+          git push
