@@ -29,7 +29,7 @@ SERIES_URLS = [
     "https://p-bandai.com/tw/series/onepiece-series?_f_series=03-002&offset=0&limit=20&sortType=NewArrival&_f_productStatuses=Waiting,On",
 ]
 
-# 재고 없음을 나타내는 키워드 (사이트 표기에 맞게 수정 가능)
+# 재고 없음을 나타내는 키워드 (대소문자 구분 없이 매칭됨)
 OUT_OF_STOCK_KEYWORDS = [
     "OUT OF STOCK",
     "售完", "已售完", "缺貨", "販売を終了", "SOLD OUT", "sold out",
@@ -78,7 +78,6 @@ def check_item_stock(page, url: str, state: dict) -> None:
 
     text_lower = text.lower()
     is_out_of_stock = any(kw.lower() in text_lower for kw in OUT_OF_STOCK_KEYWORDS)
-    
     current_status = "out_of_stock" if is_out_of_stock else "in_stock"
 
     prev_status = state["items"].get(url)
@@ -107,4 +106,33 @@ def check_series_new_items(page, url: str, state: dict) -> None:
 
     new_codes = set(codes) - prev_codes
     for code in new_codes:
-        item_url =
+        item_url = f"https://p-bandai.com/tw/item/{code}"
+        send_discord(f"🆕 **신상품 등록!**\n{item_url}")
+
+
+def main() -> None:
+    state = load_state()
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        page = browser.new_page(locale="zh-TW")
+
+        for url in ITEM_URLS:
+            try:
+                check_item_stock(page, url, state)
+            except Exception as e:
+                print(f"[ERROR] 상품 체크 실패 ({url}): {e}", file=sys.stderr)
+
+        for url in SERIES_URLS:
+            try:
+                check_series_new_items(page, url, state)
+            except Exception as e:
+                print(f"[ERROR] 시리즈 체크 실패 ({url}): {e}", file=sys.stderr)
+
+        browser.close()
+
+    save_state(state)
+
+
+if __name__ == "__main__":
+    main()
