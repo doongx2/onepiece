@@ -76,7 +76,9 @@ def check_item_stock(page, url: str, state: dict) -> None:
     html = fetch_page_text(page, url)
     text = re.sub(r"<[^>]+>", " ", html)  # 태그 제거 후 텍스트만 확인
 
-    is_out_of_stock = any(kw in text for kw in OUT_OF_STOCK_KEYWORDS)
+    text_lower = text.lower()
+    is_out_of_stock = any(kw.lower() in text_lower for kw in OUT_OF_STOCK_KEYWORDS)
+    
     current_status = "out_of_stock" if is_out_of_stock else "in_stock"
 
     prev_status = state["items"].get(url)
