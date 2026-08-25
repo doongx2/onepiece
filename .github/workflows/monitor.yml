@@ -2,13 +2,18 @@ name: P-Bandai Monitor
 
 on:
   schedule:
-    # 매 20분마다 실행 (UTC 기준, cron은 UTC 시간을 사용합니다)
-    - cron: "*/20 * * * *"
+    # 매 5분마다 실행 (UTC 기준, cron은 UTC 시간을 사용합니다)
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}  # Actions 탭에서 수동 실행 버튼 활성화
 
 # state.json을 다시 커밋하기 위해 쓰기 권한 필요
 permissions:
   contents: write
+
+# 이전 실행이 끝나기 전에 다음 실행이 겹쳐서 push 충돌나는 것 방지
+concurrency:
+  group: pbandai-monitor
+  cancel-in-progress: false
 
 jobs:
   monitor:
@@ -32,10 +37,14 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python monitor.py
 
-      - name: 상태 파일 커밋
+      - name: 상태 파일 커밋 및 푸시 (충돌 시 재시도)
         run: |
           git config user.name "pbandai-monitor-bot"
           git config user.email "actions@github.com"
           git add state.json
           git diff --quiet --cached || git commit -m "Update state.json"
-          git push
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push && break
+            echo "push 실패, 재시도 ($i)..."
+            sleep 5
+          done
