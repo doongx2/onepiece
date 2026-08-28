@@ -1,7 +1,7 @@
 """
-P-Bandai(台灣) 재고/신상품 모니터링 스크립트
+P-Bandai(台灣) 재고/신상품 모니터링 스크립트 (GitHub Actions용)
 - 특정 상품 페이지의 재고 상태 변화 감지
-- 시리즈 목록 페이지의 신상품 등록 감지
+- 시리즈 목록 페이지의 신상품 등록 감지 (상품명에 필터 키워드 포함된 것만 알림)
 - 변화 발생 시 Discord 웹훅으로 알림 전송
 
 실행 환경: Python 3.10+, Playwright(Chromium)
@@ -22,6 +22,7 @@ from playwright.sync_api import sync_playwright
 # 재고 확인할 상품 페이지들 (여러 개 등록 가능)
 ITEM_URLS = [
     "https://p-bandai.com/tw/item/A2866729001",
+    "https://p-bandai.com/tw/item/A2866726001",
 ]
 
 # 신상품 확인할 시리즈/목록 페이지들 (여러 개 등록 가능)
@@ -31,12 +32,16 @@ SERIES_URLS = [
 
 # 재고 없음을 나타내는 키워드 (대소문자 구분 없이 매칭됨)
 OUT_OF_STOCK_KEYWORDS = [
+    "Sorry, Out of Stock",
     "OUT OF STOCK",
     "售完", "已售完", "缺貨", "販売を終了", "SOLD OUT", "sold out",
 ]
 
 # 상품 링크 패턴 (시리즈 페이지에서 개별 상품 코드 추출용)
 ITEM_LINK_PATTERN = re.compile(r"/tw/item/([A-Za-z0-9]+)")
+
+# 신상품 알림 필터: 상품명에 이 단어들 중 하나라도 포함된 경우에만 알림 (대소문자 구분 없음)
+NEW_ITEM_NAME_FILTER = ["CARD"]
 
 STATE_FILE = Path(__file__).parent / "state.json"
 DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
@@ -67,16 +72,29 @@ def send_discord(message: str) -> None:
 
 
 def fetch_page_text(page, url: str) -> str:
-    page.goto(url, wait_until="networkidle", timeout=30000)
-    page.wait_for_timeout(1500)  # 추가 렌더링 대기
+    page.goto(url, wait_until="domcontentloaded", timeout=20000)
+    page.wait_for_timeout(3000)
     return page.content()
+
+
+def get_item_title(page, url: str) -> str:
+    """상품 페이지에 들어가서 브라우저 탭 제목(보통 상품명 포함)을 가져옴.
+    이 사이트는 자바스크립트로 나중에 제목을 바꾸므로, 진짜 제목이 뜰 때까지 최대 10초 재시도함."""
+    page.goto(url, wait_until="domcontentloaded", timeout=20000)
+    for _ in range(10):
+        title = page.title()
+        if title and "PAGE NOT AVAILABLE" not in title.upper():
+            return title
+        page.wait_for_timeout(1000)
+    print(f"[WARN] 제목이 끝까지 로딩 안됨, 마지막 값 사용: {title}")
+    return title
 
 
 def check_item_stock(page, url: str, state: dict) -> None:
     html = fetch_page_text(page, url)
-    text = re.sub(r"<[^>]+>", " ", html)  # 태그 제거 후 텍스트만 확인
-
+    text = re.sub(r"<[^>]+>", " ", html)
     text_lower = text.lower()
+
     is_out_of_stock = any(kw.lower() in text_lower for kw in OUT_OF_STOCK_KEYWORDS)
     current_status = "out_of_stock" if is_out_of_stock else "in_stock"
 
@@ -107,7 +125,19 @@ def check_series_new_items(page, url: str, state: dict) -> None:
     new_codes = set(codes) - prev_codes
     for code in new_codes:
         item_url = f"https://p-bandai.com/tw/item/{code}"
-        send_discord(f"🆕 **신상품 등록!**\n{item_url}")
+        try:
+            title = get_item_title(page, item_url)
+        except Exception as e:
+            print(f"[ERROR] 상품명 확인 실패 ({item_url}): {e}")
+            continue
+
+        print(f"[INFO] 신상품 발견: {title} ({item_url})")
+
+        if any(kw.lower() in title.lower() for kw in NEW_ITEM_NAME_FILTER):
+            print(f"[INFO]  -> 필터 통과, 알림 전송: {title}")
+            send_discord(f"🆕 **신상품 등록!**\n{title}\n{item_url}")
+        else:
+            print(f"[INFO]  -> 필터 미통과, 알림 생략: {title}")
 
 
 def main() -> None:
