@@ -1,6 +1,7 @@
 {
   "items": {
-    "https://p-bandai.com/tw/item/A2866729001": "in_stock"
+    "https://p-bandai.com/tw/item/A2866729001": "in_stock",
+    "https://p-bandai.com/tw/item/A2866726001": "in_stock"
   },
   "series": {
     "https://p-bandai.com/tw/series/onepiece-series?_f_series=03-002&offset=0&limit=20&sortType=NewArrival&_f_productStatuses=Waiting,On": [
