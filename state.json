@@ -4,17 +4,6 @@
     "https://p-bandai.com/tw/item/A2866726001": "in_stock"
   },
   "series": {
-    "https://p-bandai.com/tw/series/onepiece-series?_f_series=03-002&offset=0&limit=20&sortType=NewArrival&_f_productStatuses=Waiting,On": [
-      "A2832640001",
-      "A2845076001",
-      "A2848876002",
-      "A2866272001",
-      "A2866273001",
-      "A2866726001",
-      "A2869565001",
-      "A2897406001",
-      "AZ005736001",
-      "AZ005737001"
-    ]
+    "https://p-bandai.com/tw/series/onepiece-series?_f_series=03-002&offset=0&limit=20&sortType=NewArrival&_f_productStatuses=Waiting,On": []
   }
 }
