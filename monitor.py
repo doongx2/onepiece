@@ -23,6 +23,7 @@ from playwright.sync_api import sync_playwright
 ITEM_URLS = [
     "https://p-bandai.com/tw/item/A2866729001",
     "https://p-bandai.com/tw/item/A2866726001",
+    "https://p-bandai.com/tw/item/A2866729002",
 ]
 
 # 신상품 확인할 시리즈/목록 페이지들 (여러 개 등록 가능)
@@ -81,6 +82,7 @@ def get_item_title(page, url: str) -> str:
     """상품 페이지에 들어가서 브라우저 탭 제목(보통 상품명 포함)을 가져옴.
     이 사이트는 자바스크립트로 나중에 제목을 바꾸므로, 진짜 제목이 뜰 때까지 최대 10초 재시도함."""
     page.goto(url, wait_until="domcontentloaded", timeout=20000)
+    title = ""
     for _ in range(10):
         title = page.title()
         if title and "PAGE NOT AVAILABLE" not in title.upper():
